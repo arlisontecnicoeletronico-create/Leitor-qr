@@ -1,0 +1,117 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leitor QR - Inventário Hospitalar</title>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f5f7;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+    }
+
+    h2 {
+      color: #1f2937;
+    }
+
+    button {
+      background: #1769aa;
+      color: white;
+      border: 0;
+      padding: 14px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      margin: 8px;
+      cursor: pointer;
+    }
+
+    #leitor {
+      width: 100%;
+      margin-top: 20px;
+    }
+
+    #mensagem {
+      margin-top: 15px;
+      font-size: 15px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>Leitor QR Code</h2>
+    <p>Inventário Hospitalar</p>
+
+    <button id="iniciar">Abrir câmera</button>
+    <button id="fechar">Fechar câmera</button>
+
+    <div id="leitor"></div>
+
+    <div id="mensagem">
+      Toque em Abrir câmera para começar.
+    </div>
+  </div>
+
+  <script>
+    let scanner = null;
+
+    document.getElementById('iniciar').onclick = async function() {
+      const mensagem = document.getElementById('mensagem');
+
+      try {
+        mensagem.textContent = 'Solicitando acesso à câmera...';
+
+        scanner = new Html5Qrcode('leitor');
+
+        await scanner.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 180 }
+          },
+          function(codigo) {
+            mensagem.textContent = 'QR Code lido: ' + codigo;
+            scanner.stop();
+          },
+          function() {}
+        );
+
+        mensagem.textContent = 'Aponte a câmera para o QR Code.';
+
+      } catch (erro) {
+        mensagem.textContent =
+          'Erro ao acessar câmera: ' + erro;
+      }
+    };
+
+    document.getElementById('fechar').onclick = async function() {
+      if (scanner) {
+        try {
+          await scanner.stop();
+          await scanner.clear();
+        } catch (erro) {}
+
+        scanner = null;
+      }
+
+      document.getElementById('mensagem').textContent =
+        'Câmera fechada.';
+    };
+  </script>
+</body>
+</html>

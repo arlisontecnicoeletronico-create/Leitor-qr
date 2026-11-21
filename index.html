@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -24,9 +25,7 @@
       border-radius: 12px;
     }
 
-    h2 {
-      color: #1f2937;
-    }
+    h2 { color: #1f2937; }
 
     button {
       background: #1769aa;
@@ -76,7 +75,6 @@
   </div>
 
   <script>
-
     let scanner = null;
     let leituraConcluida = false;
     let iniciando = false;
@@ -84,7 +82,6 @@
     const mensagem = document.getElementById('mensagem');
     const botaoIniciar = document.getElementById('iniciar');
 
-    // Identifica a finalidade da leitura.
     const parametros = new URLSearchParams(window.location.search);
     const modoLeitura = parametros.get('modo') || 'pesquisa';
 
@@ -96,23 +93,45 @@
         'Leitura para localizar o equipamento.';
     }
 
-    // Formatos aceitos pelo leitor.
-    const formatos = [
-      Html5QrcodeSupportedFormats.QR_CODE,
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.CODE_93,
-      Html5QrcodeSupportedFormats.CODABAR,
-      Html5QrcodeSupportedFormats.ITF,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.PDF_417,
-      Html5QrcodeSupportedFormats.DATA_MATRIX
-    ];
+    // Modo QR: aceita somente QR Code.
+    // Modo pesquisa: aceita QR Code e códigos de barras.
+    const formatos = modoLeitura === 'qr'
+      ? [
+          Html5QrcodeSupportedFormats.QR_CODE
+        ]
+      : [
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_93,
+          Html5QrcodeSupportedFormats.CODABAR,
+          Html5QrcodeSupportedFormats.ITF,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.PDF_417,
+          Html5QrcodeSupportedFormats.DATA_MATRIX
+        ];
 
-    // Abre a câmera.
+    async function encerrarCamera() {
+      if (scanner) {
+        try {
+          await scanner.stop();
+        } catch (erro) {
+          console.error('Erro ao parar câmera:', erro);
+        }
+
+        try {
+          await scanner.clear();
+        } catch (erro) {
+          console.error('Erro ao limpar leitor:', erro);
+        }
+
+        scanner = null;
+      }
+    }
+
     document.getElementById('iniciar').onclick = async function() {
 
       if (iniciando || scanner) return;
@@ -122,7 +141,6 @@
       botaoIniciar.disabled = true;
 
       try {
-
         mensagem.textContent = 'Solicitando acesso à câmera...';
 
         scanner = new Html5Qrcode('leitor', {
@@ -131,9 +149,7 @@
         });
 
         await scanner.start(
-
           { facingMode: 'environment' },
-
           {
             fps: 10,
             qrbox: { width: 280, height: 180 },
@@ -149,45 +165,36 @@
             mensagem.textContent =
               'Código lido! Enviando ao formulário...';
 
-            // Verifica se o formulário continua aberto.
             if (window.opener && !window.opener.closed) {
 
-              // Envia código e finalidade da leitura.
-              window.opener.postMessage(
-                {
-                  modo: modoLeitura,
-                  codigo: codigo
-                },
-                'https://arlisontecnicoeletronico-create.github.io'
-              );
-
-              mensagem.textContent =
-                'Código enviado! Retornando ao formulário...';
-
-              // Encerra a câmera.
               try {
+                // Envia para a janela que abriu o leitor.
+                // O formulário valida a origem da mensagem.
+                window.opener.postMessage(
+                  {
+                    modo: modoLeitura,
+                    codigo: codigo
+                  },
+                  '*'
+                );
 
-                if (scanner) {
-                  await scanner.stop();
-                  await scanner.clear();
-                  scanner = null;
-                }
+                mensagem.textContent =
+                  'Código enviado! Retornando ao formulário...';
 
-              } catch (erro) {
-                console.error('Erro ao fechar câmera:', erro);
-              }
+                await encerrarCamera();
 
-              // Retorna à aba do formulário.
-              try {
                 window.opener.focus();
-              } catch (erro) {
-                console.error('Erro ao retornar:', erro);
-              }
 
-              // Fecha automaticamente a aba do leitor.
-              setTimeout(function() {
-                window.close();
-              }, 300);
+                setTimeout(function() {
+                  window.close();
+                }, 500);
+
+              } catch (erro) {
+                console.error('Erro ao retornar ao formulário:', erro);
+
+                mensagem.textContent =
+                  'Código lido, mas ocorreu um erro ao retornar.';
+              }
 
             } else {
 
@@ -195,26 +202,14 @@
                 'Não foi possível localizar o formulário. ' +
                 'Abra o leitor pelo botão do inventário.';
 
-              try {
-
-                if (scanner) {
-                  await scanner.stop();
-                  await scanner.clear();
-                  scanner = null;
-                }
-
-              } catch (erro) {
-                console.error('Erro ao fechar câmera:', erro);
-              }
+              await encerrarCamera();
 
               botaoIniciar.disabled = false;
               iniciando = false;
             }
-
           },
 
           function() {}
-
         );
 
         mensagem.textContent =
@@ -227,36 +222,16 @@
         mensagem.textContent =
           'Erro ao acessar câmera: ' + erro;
 
-        try {
+        await encerrarCamera();
 
-          if (scanner) {
-            await scanner.clear();
-          }
-
-        } catch(e) {}
-
-        scanner = null;
         botaoIniciar.disabled = false;
         iniciando = false;
       }
-
     };
 
-    // Fecha a câmera manualmente.
     document.getElementById('fechar').onclick = async function() {
 
-      if (scanner) {
-
-        try {
-          await scanner.stop();
-          await scanner.clear();
-
-        } catch (erro) {
-          console.error('Erro ao fechar câmera:', erro);
-        }
-
-        scanner = null;
-      }
+      await encerrarCamera();
 
       leituraConcluida = false;
       iniciando = false;
@@ -264,8 +239,9 @@
 
       mensagem.textContent = 'Câmera fechada.';
     };
-
   </script>
 
 </body>
 </html>
+    
+            

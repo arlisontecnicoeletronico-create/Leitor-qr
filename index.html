@@ -98,6 +98,7 @@
             fps: 10,
             qrbox: { width: 250, height: 180 }
           },
+
           async function(codigo) {
             if (leituraConcluida) return;
 
@@ -105,32 +106,56 @@
 
             mensagem.textContent = 'QR Code lido: ' + codigo;
 
-            // Envia o código para a aba do formulário.
+            // Verifica se o formulário está aberto.
             if (window.opener && !window.opener.closed) {
+
+              // Envia o código para o formulário.
               window.opener.postMessage(codigo, '*');
 
               mensagem.textContent =
-                'Código enviado ao formulário! Volte à tela do inventário.';
-            } else {
-              mensagem.textContent =
-                'Código lido, mas não foi possível localizar o formulário aberto. ' +
-                'Feche esta página e abra o leitor pelo botão do inventário.';
-            }
+                'Código enviado! Retornando ao formulário...';
 
-            // Encerra a câmera após a leitura.
-            try {
-              if (scanner) {
-                await scanner.stop();
-                await scanner.clear();
-                scanner = null;
+              // Encerra a câmera.
+              try {
+                if (scanner) {
+                  await scanner.stop();
+                  await scanner.clear();
+                  scanner = null;
+                }
+              } catch (erro) {
+                console.error('Erro ao fechar câmera:', erro);
               }
-            } catch (erro) {
-              console.error('Erro ao fechar câmera:', erro);
-            }
 
-            botaoIniciar.disabled = false;
-            iniciando = false;
+              // Retorna ao formulário.
+              window.opener.focus();
+
+              // Fecha automaticamente a aba do leitor.
+              setTimeout(function() {
+                window.close();
+              }, 300);
+
+            } else {
+
+              mensagem.textContent =
+                'Não foi possível localizar o formulário. ' +
+                'Abra o leitor pelo botão do inventário.';
+
+              // Encerra a câmera.
+              try {
+                if (scanner) {
+                  await scanner.stop();
+                  await scanner.clear();
+                  scanner = null;
+                }
+              } catch (erro) {
+                console.error('Erro ao fechar câmera:', erro);
+              }
+
+              botaoIniciar.disabled = false;
+              iniciando = false;
+            }
           },
+
           function() {}
         );
 
@@ -151,7 +176,9 @@
       }
     };
 
+    // Botão para fechar a câmera manualmente.
     document.getElementById('fechar').onclick = async function() {
+
       if (scanner) {
         try {
           await scanner.stop();
